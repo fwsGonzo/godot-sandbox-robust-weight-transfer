@@ -5,7 +5,6 @@ add_subdirectory(cmake)
 
 add_definitions(-D_USE_MATH_DEFINES)
 add_definitions(-DIGL_PARALLEL_FOR_FORCE_SERIAL)
-add_definitions(-DIGL_STATIC_LIBRARY)
 
 set(PROOT ${CMAKE_SOURCE_DIR})
 

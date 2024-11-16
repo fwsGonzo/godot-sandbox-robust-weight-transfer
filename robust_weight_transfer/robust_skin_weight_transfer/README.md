@@ -3,6 +3,13 @@
 ![Teaser](https://www.dgp.toronto.edu/~rinat/projects/RobustSkinWeightsTransfer/teaser.jpg)
 Sample code for the Siggraph Asia 2023 Technical Communications paper - [Robust Skin Weights Transfer via Weight Inpainting](https://www.dgp.toronto.edu/~rinat/projects/RobustSkinWeightsTransfer/index.html)
 
+## Compiled for Linux Ubuntu
+
+```
+sudo apt install g++-12-riscv64-linux-gnu cmake ninja-build git
+./compile.sh
+```
+
 ## Dependencies
 
 Python bindings for [libigl](https://github.com/libigl/libigl-python-bindings)
