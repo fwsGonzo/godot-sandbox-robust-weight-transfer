@@ -1,15 +1,22 @@
-LICENSE for all assets:
+MIT License
 
-Creative Commons Zero (CC0)
+Copyright (c) 2024-present V-Sekai Contributors (see AUTHORS.md).       
+Copyright (c) 2024-present K. S. Ernest (Fire) Lee           
 
-CREDIT:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-SPRITES by analogStudios\_:
-knight (https://analogstudios.itch.io/camelot)
-slime (https://analogstudios.itch.io/dungeonsprites)
-platforms and coin (https://analogstudios.itch.io/four-seasons-platformer-sprites)
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-SPRITES by RottingPixels:
-world_tileset and fruit (https://rottingpixels.itch.io/four-seasons-platformer-tileset-16x16free)
-
-WORLD TILESET originally
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
