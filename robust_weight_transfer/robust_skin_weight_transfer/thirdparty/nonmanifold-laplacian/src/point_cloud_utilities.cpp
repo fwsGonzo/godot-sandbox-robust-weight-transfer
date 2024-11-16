@@ -3,14 +3,18 @@
 #include "geometrycentral/utilities/elementary_geometry.h"
 #include "geometrycentral/utilities/knn.h"
 
-#include "polyscope/point_cloud.h"
-#include "polyscope/polyscope.h"
-#include "polyscope/surface_mesh.h"
-
 #include "Eigen/Dense"
 
 #include <cfloat>
 #include <numeric>
+
+#ifdef M_PI
+  /// π
+  constexpr double PI = M_PI;
+#else
+  /// π
+  constexpr double PI = 3.1415926535897932384626433832795;
+#endif
 
 std::vector<std::vector<size_t>> generate_knn(const std::vector<Vector3>& points, size_t k) {
 
@@ -142,7 +146,7 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
           Vector2 dir = normalize(neighPt);
           if (!isfinite(dir)) { // even direction is degenerate :(
             // pick a direction from index
-            double thetaDir = (2. * M_PI * iNeigh) / nNeigh;
+            double thetaDir = (2. * PI * iNeigh) / nNeigh;
             dir = Vector2::fromAngle(thetaDir);
           }
 
@@ -196,7 +200,7 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
         double angleJ = pointAngles[sortInds[j]];
         double gap;
         if (i + 1 == nNeigh) {
-          gap = angleJ - (angleI + 2 * M_PI);
+          gap = angleJ - (angleI + 2 * PI);
         } else {
           gap = angleJ - angleI;
         }
@@ -209,7 +213,7 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
 
       // The start of the cyclic ordering is either
       size_t firstInd;
-      if (largestGap > (M_PI - ANGLE_COLLINEAR_THRESH)) {
+      if (largestGap > (PI - ANGLE_COLLINEAR_THRESH)) {
         firstInd = largestGapEndInd;
         hasBoundary = true;
       } else {
