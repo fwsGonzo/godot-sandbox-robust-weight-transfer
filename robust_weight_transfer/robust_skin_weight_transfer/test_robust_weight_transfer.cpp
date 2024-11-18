@@ -1,10 +1,14 @@
-#include "test_robust_weight_transfer.h"
-
 #include <Eigen/Dense>
 #include <cstdint>
 #include <vector>
 #include <iostream>
 #include <set>
+
+#include <api.hpp>
+#include <Eigen/Dense>
+
+#include <vector>
+#include <tuple>
 
 #include <igl/point_mesh_squared_distance.h>
 #include <igl/barycentric_coordinates.h>
@@ -38,35 +42,6 @@ Eigen::MatrixXd find_closest_point_on_surface(const Eigen::MatrixXd& p_test_poin
     return closest_points;
 }
 
-/** 
- * Interpolate per-vertex attributes A via barycentric coordinates B of the F[I,:] vertices
- * 
- *  A: #V by N per-vertex attributes
- *  B  #B by 3 array of the barycentric coordinates of some points
- *  I  #B primitive indices containing the closest point
- *  F: #F by 3 mesh triangle indices
- *  A_out #B interpolated attributes
- */
-/*void interpolate_attribute_from_bary(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
-                                     const Eigen::VectorXi& I, const Eigen::MatrixXi& F, 
-                                     Eigen::MatrixXd& A_out)
-{
-    Eigen::MatrixXi F_closest = F(I, Eigen::all);
-
-    Eigen::MatrixXd a1 = A(F_closest.col(0), Eigen::all);
-    Eigen::MatrixXd a2 = A(F_closest(Eigen::all, 1), Eigen::all);
-    Eigen::MatrixXd a3 = A(F_closest(Eigen::all, 2), Eigen::all);
-
-    Eigen::VectorXd b1 = B(Eigen::all, 0);
-    Eigen::VectorXd b2 = B(Eigen::all, 1);
-    Eigen::VectorXd b3 = B(Eigen::all, 2);
-
-    a1.array().colwise() *= b1.array();
-    a2.array().colwise() *= b2.array();
-    a3.array().colwise() *= b3.array();
-
-    A_out = a1 + a2 + a3;
-}*/
 Eigen::MatrixXd interpolate_attribute_from_bary(const Eigen::MatrixXd& p_vertex_attributes, const Eigen::MatrixXd& p_barycentric_coordinates, const Eigen::VectorXi& p_primitive_indices, const Eigen::MatrixXi& p_mesh_triangles) {
     Eigen::MatrixXd interpolated_attributes(p_barycentric_coordinates.rows(), p_vertex_attributes.cols());
 
@@ -498,23 +473,19 @@ extern "C" Variant find_matches_closest_surface_mesh(Array source_arrays, Array 
         return Variant(0);
     }
 
-    std::cout << "Converting source vertices..." << std::endl;
     std::vector<Vector3> source_vertices_std(source_vertices_array.size());
     for (int j = 0; j < source_vertices_array.size(); ++j) {
         source_vertices_std[j] = source_vertices_array[j];
     }
-    std::cout << "Converting source triangles..." << std::endl;
     std::vector<int32_t> source_indices_std(source_triangles_array.size());
     for (int j = 0; j < source_triangles_array.size(); ++j) {
         source_indices_std[j] = source_triangles_array[j];
     }
-    std::cout << "Converting source normals..." << std::endl;
     std::vector<Vector3> source_normals_std(source_normals_array.size());
     for (int j = 0; j < source_normals_array.size(); ++j) {
         source_normals_std[j] = source_normals_array[j];
     }
 
-    std::cout << "Creating Eigen matrices for source data..." << std::endl;
     Eigen::MatrixXd source_vertices(source_vertices_std.size(), 3);
     for (int j = 0; j < source_vertices_std.size(); ++j) {
         Vector3 v = source_vertices_std[j];
@@ -532,23 +503,19 @@ extern "C" Variant find_matches_closest_surface_mesh(Array source_arrays, Array 
         source_normals.row(j) << n.x, n.y, n.z;
     }
 
-    std::cout << "Converting target vertices..." << std::endl;
     std::vector<Vector3> target_vertices_std(target_vertices_array.size());
     for (int k = 0; k < target_vertices_array.size(); ++k) {
         target_vertices_std[k] = target_vertices_array[k];
     }
-    std::cout << "Converting target triangles..." << std::endl;
     std::vector<int32_t> target_indices_std(target_triangles_array.size());
     for (int k = 0; k < target_triangles_array.size(); ++k) {
         target_indices_std[k] = target_triangles_array[k];
     }
-    std::cout << "Converting target normals..." << std::endl;
     std::vector<Vector3> target_normals_std(target_normals_array.size());
     for (int k = 0; k < target_normals_array.size(); ++k) {
         target_normals_std[k] = target_normals_array[k];
     }
 
-    std::cout << "Creating Eigen matrices for target data..." << std::endl;
     Eigen::MatrixXd target_vertices(target_vertices_std.size(), 3);
     for (int k = 0; k < target_vertices_std.size(); ++k) {
         Vector3 v = target_vertices_std[k];
@@ -566,37 +533,28 @@ extern "C" Variant find_matches_closest_surface_mesh(Array source_arrays, Array 
         target_normals.row(k) << n.x, n.y, n.z;
     }
 
-    std::cout << "Initializing source weights..." << std::endl;
     Eigen::MatrixXd source_weights(source_vertices.rows(), num_bones);
     source_weights.setZero();
 
     double distance_threshold_squared = 0.5;
     double angle_threshold_degrees = 10;
 
-    std::cout << "Finding matches on closest surface..." << std::endl;
     Eigen::MatrixXd target_weights;
     Eigen::VectorXi matched;
 	find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals, source_weights,
 		distance_threshold_squared, angle_threshold_degrees,
 		matched, target_weights);
 
-    std::cout << "Converting matched results to Godot arrays..." << std::endl;
-    //matched_godot.resize(matched.size());
     for (int m = 0; m < matched.size(); ++m) {
 		matched_godot.push_back(bool(matched(m) == 1));
-        //matched_godot[m] = bool(matched(m) == 1);
     }
 
-    std::cout << "Converting matched results to Godot arrays..." << std::endl;
-    //target_weights_godot.resize(target_weights.rows());
     for (int t = 0; t < target_weights.rows(); ++t) {
         Vector2 matched_vector2(target_weights(t, 0), target_weights(t, 1));
 		target_weights_godot.push_back(matched_vector2);
-        //target_weights_godot[t] = matched_vector2;
     }
 
-    std::cout << "Completed find_matches_closest_surface_mesh." << std::endl;
-    return 0;
+    return 1;
 }
 
 bool test_find_matches_closest_surface_mesh() {
