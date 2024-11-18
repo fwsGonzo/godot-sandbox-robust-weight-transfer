@@ -11,8 +11,8 @@ config_version=5
 [application]
 
 config/name="Slide Knight Project"
-run/main_scene="res://slide_knight/scenes/riscv_emulator.tscn"
-config/features=PackedStringArray("4.3")
+run/main_scene="res://robust_weight_transfer/scenes/node_3d.tscn"
+config/features=PackedStringArray("4.4", "Double Precision")
 config/icon="res://icon.svg"
 
 [editor]

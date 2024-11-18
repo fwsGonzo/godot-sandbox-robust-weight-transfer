@@ -21,86 +21,128 @@
 
 #include "generated_api.hpp"
 
-Eigen::MatrixXd find_closest_point_on_surface(const Eigen::MatrixXd& p_test_points, const Eigen::MatrixXd& p_vertices, const Eigen::MatrixXi& p_triangles) {
-    Eigen::VectorXd smallest_squared_distances;
-    Eigen::VectorXi primitive_indices;
-    Eigen::MatrixXd closest_points;
 
-    igl::point_mesh_squared_distance(p_test_points, p_vertices, p_triangles, smallest_squared_distances, primitive_indices, closest_points);
+/**
+ * Given a number of points find their closest points on the surface of the V,F mesh
+ * 
+ *  P: #P by 3, where every row is a point coordinate
+ *  V: #V by 3 mesh vertices
+ *  F: #F by 3 mesh triangles indices
+ *  sqrD #P smallest squared distances
+ *  I #P primitive indices corresponding to smallest distances
+ *  C #P by 3 closest points
+ *  B #P by 3 of the barycentric coordinates of the closest point
+ */
+void _find_closest_point_on_surface(const Eigen::MatrixXd& P, const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, 
+                                   Eigen::VectorXd& sqrD, Eigen::VectorXi& I, Eigen::MatrixXd& C, Eigen::MatrixXd& B)
+{
+    igl::point_mesh_squared_distance(P, V, F, sqrD, I, C);
 
-    Eigen::MatrixXd barycentric_coordinates(p_test_points.rows(), 3);
-    for (int i = 0; i < p_test_points.rows(); ++i) {
-        Eigen::RowVector3d v1 = p_vertices.row(p_triangles(primitive_indices(i), 0));
-        Eigen::RowVector3d v2 = p_vertices.row(p_triangles(primitive_indices(i), 1));
-        Eigen::RowVector3d v3 = p_vertices.row(p_triangles(primitive_indices(i), 2));
-        Eigen::RowVector3d point = closest_points.row(i);
-        Eigen::RowVector3d bary;
-        igl::barycentric_coordinates(point, v1, v2, v3, bary);
-        barycentric_coordinates.row(i) = bary;
-    }
+    Eigen::MatrixXi F_closest = F(I, Eigen::indexing::all);
+    Eigen::MatrixXd V1 = V(F_closest(Eigen::indexing::all, 0), Eigen::indexing::all);
+    Eigen::MatrixXd V2 = V(F_closest(Eigen::indexing::all, 1), Eigen::indexing::all);
+    Eigen::MatrixXd V3 = V(F_closest(Eigen::indexing::all, 2), Eigen::indexing::all);
 
-    return closest_points;
+    igl::barycentric_coordinates(C, V1, V2, V3, B);
 }
 
-Eigen::MatrixXd interpolate_attribute_from_bary(const Eigen::MatrixXd& p_vertex_attributes, const Eigen::MatrixXd& p_barycentric_coordinates, const Eigen::VectorXi& p_primitive_indices, const Eigen::MatrixXi& p_mesh_triangles) {
-    Eigen::MatrixXd interpolated_attributes(p_barycentric_coordinates.rows(), p_vertex_attributes.cols());
-
-    for (int i = 0; i < p_barycentric_coordinates.rows(); ++i) {
-        int tri_idx = p_primitive_indices(i);
-        Eigen::RowVector3i tri = p_mesh_triangles.row(tri_idx);
-
-        Eigen::RowVectorXd attr1 = p_vertex_attributes.row(tri(0));
-        Eigen::RowVectorXd attr2 = p_vertex_attributes.row(tri(1));
-        Eigen::RowVectorXd attr3 = p_vertex_attributes.row(tri(2));
-
-        double b1 = p_barycentric_coordinates(i, 0);
-        double b2 = p_barycentric_coordinates(i, 1);
-        double b3 = p_barycentric_coordinates(i, 2);
-
-        interpolated_attributes.row(i) = b1 * attr1 + b2 * attr2 + b3 * attr3;
+/** 
+ * Interpolate per-vertex attributes A via barycentric coordinates B of the F[I,:] vertices
+ * 
+ *  A: #V by N per-vertex attributes
+ *  B  #B by 3 array of the barycentric coordinates of some points
+ *  I  #B primitive indices containing the closest point
+ *  F: #F by 3 mesh triangle indices
+ *  A_out #B interpolated attributes
+ */
+void _interpolate_attribute_from_bary(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
+                                     const Eigen::VectorXi& I, const Eigen::MatrixXi& F, 
+                                     Eigen::MatrixXd& A_out)
+{
+    // https://stackoverflow.com/a/58700213
+    // The documentation in OP's question refers to the 3.3.9 version which does not support symbols all, last,seq. For the most recent stable (3.3.7) version block or reshape operators must be used.
+    Eigen::MatrixXi F_closest(I.size(), F.cols());
+    for (int i = 0; i < I.size(); ++i) {
+        F_closest.row(i) = F.row(I(i));
+    }
+    
+    Eigen::MatrixXd a1(F_closest.rows(), A.cols());
+    Eigen::MatrixXd a2(F_closest.rows(), A.cols());
+    Eigen::MatrixXd a3(F_closest.rows(), A.cols());
+    for (int i = 0; i < F_closest.rows(); ++i) {
+        a1.row(i) = A.row(F_closest(i, 0));
+        a2.row(i) = A.row(F_closest(i, 1));
+        a3.row(i) = A.row(F_closest(i, 2));
     }
 
-    return interpolated_attributes;
+    Eigen::VectorXd b1 = B.col(0);
+    Eigen::VectorXd b2 = B.col(1);
+    Eigen::VectorXd b3 = B.col(2);
+
+    for (int i = 0; i < a1.cols(); ++i) {
+        a1.col(i) = a1.col(i).array() * b1.array();
+        a2.col(i) = a2.col(i).array() * b2.array();
+        a3.col(i) = a3.col(i).array() * b3.array();
+    }
+
+    A_out = a1 + a2 + a3;
 }
 
 Eigen::VectorXd normalize_vector(const Eigen::VectorXd& p_vector) {
     return p_vector.normalized();
 }
 
-void find_matches_closest_surface(const Eigen::MatrixXd& p_source_vertices, const Eigen::MatrixXi& p_source_triangles, const Eigen::MatrixXd& source_normals, const Eigen::MatrixXd& target_vertices, const Eigen::MatrixXi& p_target_triangles, const Eigen::MatrixXd& p_target_normals, const Eigen::MatrixXd& p_source_weights, double p_distance_threshold_squared, double p_angle_threshold_degrees,
-													  Eigen::VectorXi& r_matched, Eigen::MatrixXd& r_target_weights) {
-	Eigen::VectorXd squared_distance;
-    Eigen::VectorXi closest_indices;
-    Eigen::MatrixXd closest_points;
+/**
+ * For each vertex on the target mesh find a match on the source mesh.
+ * 
+ *  V1: #V1 by 3 source mesh vertices
+ *  F1: #F1 by 3 source mesh triangles indices
+ *  N1: #V1 by 3 source mesh normals
+ *  V2: #V2 by 3 target mesh vertices
+ *  F2: #F2 by 3 target mesh triangles indices
+ *  N2: #V2 by 3 target mesh normals
+ *  W1: #V1 by num_bones source mesh skin weights
+ *  dDISTANCE_THRESHOLD_SQRD: distance threshold
+ *  dANGLE_THRESHOLD_DEGREES: normal threshold
+ *  Matched: #V2 array of bools, where Matched[i] is True if we found a good match for vertex i on the source mesh
+ *  W2: #V2 by num_bones, where W2[i,:] are skinning weights copied directly from source using closest point method
+ */
+void _find_matches_closest_surface(const Eigen::MatrixXd& V1, const Eigen::MatrixXi& F1, const Eigen::MatrixXd& N1, 
+                                  const Eigen::MatrixXd& V2, const Eigen::MatrixXi& F2, const Eigen::MatrixXd& N2, 
+                                  const Eigen::MatrixXd& W1, 
+                                  double dDISTANCE_THRESHOLD_SQRD, 
+                                  double dANGLE_THRESHOLD_DEGREES,
+                                  Eigen::MatrixXd& W2,
+                                  Eigen::Array<bool,Eigen::Dynamic,1>& Matched)
+{
+    Matched = Eigen::Array<bool,Eigen::Dynamic,1>::Constant(V2.rows(), false);
+    Eigen::VectorXd sqrD; 
+    Eigen::VectorXi I;
+    Eigen::MatrixXd C, B;
+    _find_closest_point_on_surface(V2, V1, F1, sqrD, I, C, B);
+    
+    // for each closest point on the source, interpolate its per-vertex attributes(skin weights and normals) 
+    // using the barycentric coordinates
+    _interpolate_attribute_from_bary(W1, B, I, F1, W2);
 
-    igl::point_mesh_squared_distance(target_vertices, p_source_vertices, p_source_triangles, squared_distance, closest_indices, closest_points);
+    Eigen::MatrixXd N1_match_interpolated;
+    _interpolate_attribute_from_bary(N1, B, I, F1, N1_match_interpolated);
+    
+    // check that the closest point passes our distance and normal thresholds
+    for (int RowIdx = 0; RowIdx < V2.rows(); ++RowIdx)
+    {
+        Eigen::VectorXd n1 = N1_match_interpolated.row(RowIdx);
+        n1.normalize();
 
-    Eigen::MatrixXd barycentric_coordinates(target_vertices.rows(), 3);
-    for (int i = 0; i < target_vertices.rows(); ++i) {
-        Eigen::RowVector3d v1 = p_source_vertices.row(p_source_triangles(closest_indices(i), 0));
-        Eigen::RowVector3d v2 = p_source_vertices.row(p_source_triangles(closest_indices(i), 1));
-        Eigen::RowVector3d v3 = p_source_vertices.row(p_source_triangles(closest_indices(i), 2));
-        Eigen::RowVector3d point = closest_points.row(i);
-        Eigen::RowVector3d bary;
-        igl::barycentric_coordinates(point, v1, v2, v3, bary);
-        barycentric_coordinates.row(i) = bary;
-    }
+        Eigen::VectorXd n2 = N2.row(RowIdx);
+        n2.normalize();
 
-    r_target_weights = interpolate_attribute_from_bary(p_source_weights, barycentric_coordinates, closest_indices, p_source_triangles);
-    Eigen::MatrixXd source_normals_matched_interpolated = interpolate_attribute_from_bary(source_normals, barycentric_coordinates, closest_indices, p_source_triangles);
+        const double rad_angle = acos(n1.dot(n2));
+        const double deg_angle = rad_angle * (180.0 / M_PI);
 
-    Eigen::VectorXi& matched = r_matched;
-    matched.setZero();
-
-    for (int i = 0; i < target_vertices.rows(); ++i) {
-        Eigen::Vector3d normalized_source_normal = normalize_vector(source_normals_matched_interpolated.row(i));
-        Eigen::Vector3d normalized_target_normal = normalize_vector(p_target_normals.row(i));
-
-        double radian_angle = std::acos(std::abs(normalized_source_normal.dot(normalized_target_normal)));
-        double degree_angle = radian_angle * 180.0 / M_PI;
-
-        if (squared_distance(i) <= p_distance_threshold_squared && degree_angle <= p_angle_threshold_degrees) {
-            matched(i) = 1;
+        if (sqrD(RowIdx) <= dDISTANCE_THRESHOLD_SQRD and deg_angle <= dANGLE_THRESHOLD_DEGREES)
+        {
+            Matched(RowIdx) = true;
         }
     }
 }
@@ -256,11 +298,21 @@ bool test_find_closest_point_on_surface() {
     expected_points << 0, 0, -1,
                        1, 1, -1,
                        0, 0, -1;
+    Eigen::MatrixXd expected_barycentric(3, 3);
+    expected_barycentric << 0.5, 0, 0.5,
+                            0, 0, 1,
+                            0.5, 0, 0.5;
 
-    Eigen::MatrixXd closest_points = find_closest_point_on_surface(test_points, vertices, triangles);
-    std::cout << "Closest Points:\n" << closest_points << std::endl;
+    Eigen::VectorXd sqrD;
+    Eigen::VectorXi I;
+    Eigen::MatrixXd C, B;
+    _find_closest_point_on_surface(test_points, vertices, triangles, sqrD, I, C, B);
+
+    std::cout << "Closest Points:\n" << C << std::endl;
     std::cout << "Expected Points:\n" << expected_points << std::endl;
-    if (!closest_points.isApprox(expected_points, 1e-6)) {
+    std::cout << "Barycentric Coordinates:\n" << B << std::endl;
+    std::cout << "Expected Barycentric Coordinates:\n" << expected_barycentric << std::endl;
+    if (!C.isApprox(expected_points, 1e-6) || !B.isApprox(expected_barycentric, 1e-6)) {
         return false;
     }
     return true;
@@ -285,7 +337,8 @@ bool test_interpolate_attribute_from_bary() {
     expected_output << 1 * 0.2 + 3 * 0.5 + 5 * 0.3, 2 * 0.2 + 4 * 0.5 + 6 * 0.3,
                        5 * 0.6 + 7 * 0.3 + 9 * 0.1, 6 * 0.6 + 8 * 0.3 + 10 * 0.1;
 
-    Eigen::MatrixXd result = interpolate_attribute_from_bary(vertex_attributes, barycentric_coordinates, primitive_indices, mesh_triangles);
+    Eigen::MatrixXd result;
+    _interpolate_attribute_from_bary(vertex_attributes, barycentric_coordinates, primitive_indices, mesh_triangles, result);
     std::cout << "Interpolated Attributes:\n" << result << std::endl;
     std::cout << "Expected Output:\n" << expected_output << std::endl;
     if (!result.isApprox(expected_output, 1e-6)) {
@@ -310,47 +363,54 @@ bool test_normalize_vector() {
 }
 
 bool test_find_matches_closest_surface() {
-    Eigen::MatrixXd source_vertices(3, 3);
+    Eigen::MatrixXd source_vertices(4, 3);
     source_vertices << 0, 0, 0,
                        1, 0, 0,
-                       0, 1, 0;
-    Eigen::MatrixXi source_triangles(1, 3);
-    source_triangles << 0, 1, 2;
-    Eigen::MatrixXd source_normals(3, 3);
+                       0, 1, 0,
+                       1, 1, 0;
+    Eigen::MatrixXi source_triangles(2, 3);
+    source_triangles << 0, 1, 2,
+                        1, 2, 3;
+    Eigen::MatrixXd source_normals(4, 3);
     source_normals << 0, 0, 1,
                       0, 0, 1,
+                      0, 0, 1,
                       0, 0, 1;
-    Eigen::MatrixXd source_weights(3, 2);
-    source_weights << 1, 0,
-                      0, 1,
-                      0.5, 0.5;
+    Eigen::MatrixXd source_weights(4, 8);
+    source_weights << 1, 0, 0, 0, 0, 0, 0, 0,
+                      0, 1, 0, 0, 0, 0, 0, 0,
+                      0.5, 0.5, 0, 0, 0, 0, 0, 0,
+                      0.25, 0.75, 0, 0, 0, 0, 0, 0;
 
-    Eigen::MatrixXd target_vertices(2, 3);
-    target_vertices << 0.1, 0.1, 0,
-                       2, 2, 2;
+    Eigen::MatrixXd target_vertices(3, 3);
+    target_vertices << 0.5, 0.5, 0,
+                       1.5, 1.5, 0,
+                       0.5, 0.5, 1;
     Eigen::MatrixXi target_triangles(1, 3);
-    target_triangles << 0, 1;
-    Eigen::MatrixXd target_normals(2, 3);
+    target_triangles << 0, 1, 2;
+    Eigen::MatrixXd target_normals(3, 3);
     target_normals << 0, 0, 1,
-                      1, 0, 0;
+                      0, 0, 1,
+                      0, 0, 1;
 
-    double distance_threshold_squared = 0.5;
+    double distance_threshold_squared = 1.0;
     double angle_threshold_degrees = 10;
+    Eigen::Array<bool, Eigen::Dynamic, 1> expected_matched(3);
+    expected_matched << true, true, true;
+    Eigen::MatrixXd expected_weights(3, 8);
+    expected_weights << 0.25, 0.75, 0, 0, 0, 0, 0, 0,
+                        0.25, 0.75, 0, 0, 0, 0, 0, 0,
+                        0.25, 0.75, 0, 0, 0, 0, 0, 0;
 
-    Eigen::VectorXi expected_matched(2);
-    expected_matched << 1, 0;
-    Eigen::MatrixXd expected_weights(2, 2);
-    expected_weights << 0.85, 0.15,
-                        0.25, 0.75;
+    Eigen::MatrixXd target_weights;
+    Eigen::Array<bool, Eigen::Dynamic, 1> matched;
+    _find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals, source_weights, distance_threshold_squared, angle_threshold_degrees, target_weights, matched);
 
-	Eigen::VectorXi matched(2);
-	Eigen::MatrixXd target_weights;
-    find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals, source_weights, distance_threshold_squared, angle_threshold_degrees, matched, target_weights);
     std::cout << "Matched:\n" << matched << std::endl;
     std::cout << "Expected Matched:\n" << expected_matched << std::endl;
     std::cout << "Target Weights:\n" << target_weights << std::endl;
     std::cout << "Expected Weights:\n" << expected_weights << std::endl;
-    if (!matched.isApprox(expected_matched) || !target_weights.isApprox(expected_weights, 1e-6)) {
+    if ((matched != expected_matched).any() || !target_weights.isApprox(expected_weights, 1e-6)) {
         return false;
     }
     return true;
@@ -482,21 +542,22 @@ bool test_find_matches_closest_surface_mesh() {
 
     double distance_threshold_squared = 1.0;
     double angle_threshold_degrees = 10;
-    Eigen::VectorXi expected_matched(3);
-    expected_matched << 1, 1, 1;
+    Eigen::Array<bool, Eigen::Dynamic, 1> expected_matched(3);
+    expected_matched << true, true, true;
     Eigen::MatrixXd expected_weights(3, 8);
     expected_weights << 0.25, 0.75, 0, 0, 0, 0, 0, 0,
                         0.25, 0.75, 0, 0, 0, 0, 0, 0,
                         0.25, 0.75, 0, 0, 0, 0, 0, 0;
-    Eigen::VectorXi matched(3);
+
     Eigen::MatrixXd target_weights;
-    find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals,
-        source_weights, distance_threshold_squared, angle_threshold_degrees, matched, target_weights);
-    std::cout << "Target Matched:\n" << matched << std::endl;
+    Eigen::Array<bool, Eigen::Dynamic, 1> matched;
+    _find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals, source_weights, distance_threshold_squared, angle_threshold_degrees, target_weights, matched);
+
+    std::cout << "Matched:\n" << matched << std::endl;
     std::cout << "Expected Matched:\n" << expected_matched << std::endl;
     std::cout << "Target Weights:\n" << target_weights << std::endl;
     std::cout << "Expected Weights:\n" << expected_weights << std::endl;
-    if (!matched.isApprox(expected_matched) || !target_weights.isApprox(expected_weights, 1e-6)) {
+    if ((matched != expected_matched).any() || !target_weights.isApprox(expected_weights, 1e-6)) {
         return false;
     }
     return true;
