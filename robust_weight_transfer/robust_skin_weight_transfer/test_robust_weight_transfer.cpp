@@ -449,114 +449,6 @@ bool test_smooth() {
     return true;
 }
 
-extern "C" Variant find_matches_closest_surface_mesh(Array source_arrays, Array target_arrays,
-    int num_bones, Array matched_godot, Array target_weights_godot) {
-
-	PackedArray<Vector3> source_vertices_array_ref = source_arrays.at(Mesh::ARRAY_VERTEX).as_vector3_array();
-	PackedArray<Vector3> source_normals_array_ref = source_arrays.at(Mesh::ARRAY_NORMAL).as_vector3_array();
-	PackedArray<int32_t> source_triangles_array_ref = source_arrays.at(Mesh::ARRAY_INDEX).as_int32_array();
-
-	PackedArray<Vector3> target_vertices_array_ref = target_arrays.at(Mesh::ARRAY_VERTEX).as_vector3_array();
-	PackedArray<Vector3> target_normals_array_ref = target_arrays.at(Mesh::ARRAY_NORMAL).as_vector3_array();
-	PackedArray<int32_t> target_triangles_array_ref = target_arrays.at(Mesh::ARRAY_INDEX).as_int32_array();
-
-	std::vector<Vector3> source_vertices_array = source_vertices_array_ref.fetch();
-	std::vector<Vector3> source_normals_array = source_normals_array_ref.fetch();
-	std::vector<int32_t> source_triangles_array = source_triangles_array_ref.fetch();
-
-	std::vector<Vector3> target_vertices_array = target_vertices_array_ref.fetch();
-	std::vector<Vector3> target_normals_array = target_normals_array_ref.fetch();
-	std::vector<int32_t> target_triangles_array = target_triangles_array_ref.fetch();
-
-    if (source_vertices_array.empty() || source_triangles_array.empty() || source_normals_array.empty() || target_vertices_array.empty() || target_triangles_array.empty() || target_normals_array.empty()) {
-        std::cerr << "One or more input arrays are empty." << std::endl;
-        return Variant(0);
-    }
-
-    std::vector<Vector3> source_vertices_std(source_vertices_array.size());
-    for (int j = 0; j < source_vertices_array.size(); ++j) {
-        source_vertices_std[j] = source_vertices_array[j];
-    }
-    std::vector<int32_t> source_indices_std(source_triangles_array.size());
-    for (int j = 0; j < source_triangles_array.size(); ++j) {
-        source_indices_std[j] = source_triangles_array[j];
-    }
-    std::vector<Vector3> source_normals_std(source_normals_array.size());
-    for (int j = 0; j < source_normals_array.size(); ++j) {
-        source_normals_std[j] = source_normals_array[j];
-    }
-
-    Eigen::MatrixXd source_vertices(source_vertices_std.size(), 3);
-    for (int j = 0; j < source_vertices_std.size(); ++j) {
-        Vector3 v = source_vertices_std[j];
-        source_vertices.row(j) << v.x, v.y, v.z;
-    }
-
-    Eigen::MatrixXi source_triangles(source_indices_std.size() / 3, 3);
-    for (int j = 0; j < source_indices_std.size(); j += 3) {
-        source_triangles.row(j / 3) << source_indices_std[j], source_indices_std[j + 1], source_indices_std[j + 2];
-    }
-
-    Eigen::MatrixXd source_normals(source_normals_std.size(), 3);
-    for (int j = 0; j < source_normals_std.size(); ++j) {
-        Vector3 n = source_normals_std[j];
-        source_normals.row(j) << n.x, n.y, n.z;
-    }
-
-    std::vector<Vector3> target_vertices_std(target_vertices_array.size());
-    for (int k = 0; k < target_vertices_array.size(); ++k) {
-        target_vertices_std[k] = target_vertices_array[k];
-    }
-    std::vector<int32_t> target_indices_std(target_triangles_array.size());
-    for (int k = 0; k < target_triangles_array.size(); ++k) {
-        target_indices_std[k] = target_triangles_array[k];
-    }
-    std::vector<Vector3> target_normals_std(target_normals_array.size());
-    for (int k = 0; k < target_normals_array.size(); ++k) {
-        target_normals_std[k] = target_normals_array[k];
-    }
-
-    Eigen::MatrixXd target_vertices(target_vertices_std.size(), 3);
-    for (int k = 0; k < target_vertices_std.size(); ++k) {
-        Vector3 v = target_vertices_std[k];
-        target_vertices.row(k) << v.x, v.y, v.z;
-    }
-
-    Eigen::MatrixXi target_triangles(target_indices_std.size() / 3, 3);
-    for (int k = 0; k < target_indices_std.size(); k += 3) {
-        target_triangles.row(k / 3) << target_indices_std[k], target_indices_std[k + 1], target_indices_std[k + 2];
-    }
-
-    Eigen::MatrixXd target_normals(target_normals_std.size(), 3);
-    for (int k = 0; k < target_normals_std.size(); ++k) {
-        Vector3 n = target_normals_std[k];
-        target_normals.row(k) << n.x, n.y, n.z;
-    }
-
-    Eigen::MatrixXd source_weights(source_vertices.rows(), num_bones);
-    source_weights.setZero();
-
-    double distance_threshold_squared = 0.5;
-    double angle_threshold_degrees = 10;
-
-    Eigen::MatrixXd target_weights;
-    Eigen::VectorXi matched;
-	find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals, source_weights,
-		distance_threshold_squared, angle_threshold_degrees,
-		matched, target_weights);
-
-    for (int m = 0; m < matched.size(); ++m) {
-		matched_godot.push_back(bool(matched(m) == 1));
-    }
-
-    for (int t = 0; t < target_weights.rows(); ++t) {
-        Vector2 matched_vector2(target_weights(t, 0), target_weights(t, 1));
-		target_weights_godot.push_back(matched_vector2);
-    }
-
-    return 1;
-}
-
 bool test_find_matches_closest_surface_mesh() {
     Eigen::MatrixXd source_vertices(4, 3);
     source_vertices << 0, 0, 0,
@@ -571,11 +463,11 @@ bool test_find_matches_closest_surface_mesh() {
                       0, 0, 1,
                       0, 0, 1,
                       0, 0, 1;
-    Eigen::MatrixXd source_weights(4, 2);
-    source_weights << 1, 0,
-                      0, 1,
-                      0.5, 0.5,
-                      0.25, 0.75;
+    Eigen::MatrixXd source_weights(4, 8);
+    source_weights << 1, 0, 0, 0, 0, 0, 0, 0,
+                      0, 1, 0, 0, 0, 0, 0, 0,
+                      0.5, 0.5, 0, 0, 0, 0, 0, 0,
+                      0.25, 0.75, 0, 0, 0, 0, 0, 0;
 
     Eigen::MatrixXd target_vertices(3, 3);
     target_vertices << 0.5, 0.5, 0,
@@ -590,17 +482,16 @@ bool test_find_matches_closest_surface_mesh() {
 
     double distance_threshold_squared = 1.0;
     double angle_threshold_degrees = 10;
-
     Eigen::VectorXi expected_matched(3);
     expected_matched << 1, 1, 1;
-    Eigen::MatrixXd expected_weights(3, 2);
-    expected_weights << 0.25, 0.75,
-                        0.25, 0.75,
-                        0.25, 0.75;
+    Eigen::MatrixXd expected_weights(3, 8);
+    expected_weights << 0.25, 0.75, 0, 0, 0, 0, 0, 0,
+                        0.25, 0.75, 0, 0, 0, 0, 0, 0,
+                        0.25, 0.75, 0, 0, 0, 0, 0, 0;
     Eigen::VectorXi matched(3);
-	Eigen::MatrixXd target_weights;
-	find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals,
-		source_weights, distance_threshold_squared, angle_threshold_degrees, matched, target_weights);
+    Eigen::MatrixXd target_weights;
+    find_matches_closest_surface(source_vertices, source_triangles, source_normals, target_vertices, target_triangles, target_normals,
+        source_weights, distance_threshold_squared, angle_threshold_degrees, matched, target_weights);
     std::cout << "Target Matched:\n" << matched << std::endl;
     std::cout << "Expected Matched:\n" << expected_matched << std::endl;
     std::cout << "Target Weights:\n" << target_weights << std::endl;
