@@ -14,7 +14,7 @@ endif()
 set(PROOT ${CMAKE_SOURCE_DIR}/..)
 
 add_sandbox_program_at(robust_weight_transfer ${PROOT}
-  ${CMAKE_SOURCE_DIR}/test_robust_weight_transfer.cpp
+  ${CMAKE_SOURCE_DIR}/robust_weight_transfer.cpp
   ${CMAKE_SOURCE_DIR}/thirdparty/nonmanifold-laplacian/src/bubble_offset.cpp
   ${CMAKE_SOURCE_DIR}/thirdparty/nonmanifold-laplacian/src/point_cloud_utilities.cpp
   ${CMAKE_SOURCE_DIR}/thirdparty/nonmanifold-laplacian/src/utils.hpp
