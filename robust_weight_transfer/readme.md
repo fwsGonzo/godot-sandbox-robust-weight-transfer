@@ -1,4 +1,4 @@
-# Readme for Json Diff? for Godot Sandbox
+# Readme
 
 Install msys2 dependencies for Windows.
 
@@ -17,7 +17,3 @@ cd robust_weight_transfer/robust_skin_weight_transfer
 # Optional for debugging.
 riscv64-unknown-elf-readelf.exe -a json_diff.elf
 ```
-
-## Debugging
-
-Make sure Visual Studio Code settings has C++ intellisense enabled.
