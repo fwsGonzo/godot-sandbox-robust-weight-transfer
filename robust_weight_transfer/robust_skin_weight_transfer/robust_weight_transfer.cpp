@@ -597,12 +597,10 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
         vertices_1_eigen(i, 2) = v.z;
     }
     std::cout << "vertices_1_eigen:\n" << vertices_1_eigen << std::endl;
-
-    Eigen::MatrixXi faces_1_eigen(faces_1.size(), 3);
-    for (int i = 0; i < faces_1.size(); ++i) {
-        Array face = faces_1[i];
-        for (int j = 0; j < face.size(); ++j) {
-            faces_1_eigen(i, j) = face[j];
+    Eigen::MatrixXi faces_1_eigen(faces_1.size() / 3, 3);
+    for (int i = 0; i < faces_1.size() / 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            faces_1_eigen(i, j) = faces_1[i * 3 + j];
         }
     }
     std::cout << "faces_1_eigen:\n" << faces_1_eigen << std::endl;
@@ -616,17 +614,17 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
     }
     std::cout << "normals_1_eigen:\n" << normals_1_eigen << std::endl;
 
-    if (skin_weights.size() == 0) {
+    if (!skin_weights.size()) {
         std::cerr << "skin_weights array is empty" << std::endl;
         return Variant(1);
     }
 
-    Array skin_weights_first = skin_weights[0];
+    Array skin_weights_first = skin_weights.at(0);
     Eigen::MatrixXd skin_weights_eigen(skin_weights.size(), skin_weights_first.size());
     for (int i = 0; i < skin_weights.size(); ++i) {
-        Array skin_weights_row = skin_weights[i];
+        Array skin_weights_row = skin_weights.at(i);
         for (int j = 0; j < skin_weights_row.size(); ++j) {
-            skin_weights_eigen(i, j) = skin_weights_row[j];
+            skin_weights_eigen(i, j) = skin_weights_row.at(j);
         }
     }
     std::cout << "skin_weights_eigen:\n" << skin_weights_eigen << std::endl;
@@ -640,11 +638,10 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
     }
     std::cout << "vertices_2_eigen:\n" << vertices_2_eigen << std::endl;
 
-    Eigen::MatrixXi faces_2_eigen(faces_2.size(), 3);
-    for (int i = 0; i < faces_2.size(); ++i) {
-        Array face = faces_2[i];
-        for (int j = 0; j < face.size(); ++j) {
-            faces_2_eigen(i, j) = face[j];
+    Eigen::MatrixXi faces_2_eigen(faces_2.size() / 3, 3);
+    for (int i = 0; i < faces_2.size() / 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            faces_2_eigen(i, j) = faces_2[i * 3 + j];
         }
     }
     std::cout << "faces_2_eigen:\n" << faces_2_eigen << std::endl;
