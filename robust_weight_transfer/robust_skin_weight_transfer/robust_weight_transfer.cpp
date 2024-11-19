@@ -589,7 +589,7 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
     double angle_threshold_degrees = args["angle_threshold_degrees"].value();
     double distance_threshold = args["distance_threshold"].value();
 
-    Eigen::MatrixXd vertices_1_eigen(vertices_1.size() / 3, 3);
+    Eigen::MatrixXd vertices_1_eigen(vertices_1.size(), 3);
     for (int i = 0; i < vertices_1.size(); ++i) {
         Vector3 v = vertices_1[i];
         vertices_1_eigen(i, 0) = v.x;
