@@ -577,8 +577,7 @@ bool test_find_matches_closest_surface_no_weights() {
     }
     return true;
 }
-
-extern "C" Variant robust_weight_transfer(Dictionary args) {
+extern "C" Variant robust_weight_transfer(Dictionary args, Array matched_array, Array interpolated_weights_array, Array inpainted_weights_array, Array smoothed_weights_array) {
     Array vertices_1 = args["vertices_1"].value();
     Array faces_1 = args["faces_1"].value();
     Array normals_1 = args["normals_1"].value();
@@ -588,6 +587,7 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
     Array normals_2 = args["normals_2"].value();
     double angle_threshold_degrees = args["angle_threshold_degrees"].value();
     double distance_threshold = args["distance_threshold"].value();
+    bool verbose = args["verbose"].value();
 
     Eigen::MatrixXd vertices_1_eigen(vertices_1.size(), 3);
     for (int i = 0; i < vertices_1.size(); ++i) {
@@ -596,14 +596,15 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
         vertices_1_eigen(i, 1) = v.y;
         vertices_1_eigen(i, 2) = v.z;
     }
-    std::cout << "vertices_1_eigen:\n" << vertices_1_eigen << std::endl;
+    if (verbose) { std::cout << "vertices_1_eigen:\n" << vertices_1_eigen << std::endl; }
+
     Eigen::MatrixXi faces_1_eigen(faces_1.size() / 3, 3);
     for (int i = 0; i < faces_1.size() / 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             faces_1_eigen(i, j) = faces_1[i * 3 + j];
         }
     }
-    std::cout << "faces_1_eigen:\n" << faces_1_eigen << std::endl;
+    if (verbose) { std::cout << "faces_1_eigen:\n" << faces_1_eigen << std::endl; }
 
     Eigen::MatrixXd normals_1_eigen(normals_1.size(), 3);
     for (int i = 0; i < normals_1.size(); ++i) {
@@ -612,7 +613,7 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
         normals_1_eigen(i, 1) = n.y;
         normals_1_eigen(i, 2) = n.z;
     }
-    std::cout << "normals_1_eigen:\n" << normals_1_eigen << std::endl;
+    if (verbose) { std::cout << "normals_1_eigen:\n" << normals_1_eigen << std::endl; }
 
     if (!skin_weights.size()) {
         std::cerr << "skin_weights array is empty" << std::endl;
@@ -627,7 +628,7 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
             skin_weights_eigen(i, j) = skin_weights_row.at(j);
         }
     }
-    std::cout << "skin_weights_eigen:\n" << skin_weights_eigen << std::endl;
+    if (verbose) { std::cout << "skin_weights_eigen:\n" << skin_weights_eigen << std::endl; }
 
     Eigen::MatrixXd vertices_2_eigen(vertices_2.size(), 3);
     for (int i = 0; i < vertices_2.size(); ++i) {
@@ -636,7 +637,7 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
         vertices_2_eigen(i, 1) = v.y;
         vertices_2_eigen(i, 2) = v.z;
     }
-    std::cout << "vertices_2_eigen:\n" << vertices_2_eigen << std::endl;
+    if (verbose) { std::cout << "vertices_2_eigen:\n" << vertices_2_eigen << std::endl; }
 
     Eigen::MatrixXi faces_2_eigen(faces_2.size() / 3, 3);
     for (int i = 0; i < faces_2.size() / 3; ++i) {
@@ -644,7 +645,7 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
             faces_2_eigen(i, j) = faces_2[i * 3 + j];
         }
     }
-    std::cout << "faces_2_eigen:\n" << faces_2_eigen << std::endl;
+    if (verbose) { std::cout << "faces_2_eigen:\n" << faces_2_eigen << std::endl; }
 
     Eigen::MatrixXd normals_2_eigen(normals_2.size(), 3);
     for (int i = 0; i < normals_2.size(); ++i) {
@@ -653,36 +654,55 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
         normals_2_eigen(i, 1) = n.y;
         normals_2_eigen(i, 2) = n.z;
     }
-    std::cout << "normals_2_eigen:\n" << normals_2_eigen << std::endl;
+    if (verbose) { std::cout << "normals_2_eigen:\n" << normals_2_eigen << std::endl; }
 
     // Section 3.1 Closest Point Matching
-    std::cout << "Distance threshold: " << distance_threshold << std::endl;
+    if (verbose) { std::cout << "Distance threshold: " << distance_threshold << std::endl; }
 
     Eigen::MatrixXd W2_eigen = Eigen::MatrixXd::Zero(vertices_2_eigen.rows(), skin_weights_eigen.cols());
     Eigen::Array<bool, Eigen::Dynamic, 1> Matched_eigen;
 
     find_matches_closest_surface(vertices_1_eigen, faces_1_eigen, normals_1_eigen, vertices_2_eigen, faces_2_eigen, normals_2_eigen, skin_weights_eigen, distance_threshold * distance_threshold, angle_threshold_degrees, W2_eigen, Matched_eigen);
-    std::cout << "Matched_eigen:\n" << Matched_eigen << std::endl;
-    std::cout << "W2_eigen:\n" << W2_eigen << std::endl;
+    if (verbose) { std::cout << "Matched_eigen:\n" << Matched_eigen << std::endl; }
+    if (verbose) { std::cout << "W2_eigen:\n" << W2_eigen << std::endl; }
 
     // Section 3.2 Skinning Weights Inpainting
     Eigen::MatrixXd W_inpainted;
     bool success = inpaint(vertices_2_eigen, faces_2_eigen, W2_eigen, Matched_eigen, W_inpainted);
-    std::cout << "Inpainting success: " << success << std::endl;
-    std::cout << "W_inpainted:\n" << W_inpainted << std::endl;
+    if (verbose) { std::cout << "Inpainting success: " << success << std::endl; }
+    if (verbose) { std::cout << "W_inpainted:\n" << W_inpainted << std::endl; }
 
     // Optional smoothing
     Eigen::MatrixXd W2_smoothed;
     Eigen::Array<bool, Eigen::Dynamic, 1> VIDs_to_smooth;
     smooth(W2_smoothed, VIDs_to_smooth, vertices_2_eigen, faces_2_eigen, W_inpainted, Matched_eigen, distance_threshold, 10, 0.2);
-    std::cout << "W2_smoothed:\n" << W2_smoothed << std::endl;
-    std::cout << "VIDs_to_smooth:\n" << VIDs_to_smooth << std::endl;
+    if (verbose) { std::cout << "W2_smoothed:\n" << W2_smoothed << std::endl; }
+    if (verbose) { std::cout << "VIDs_to_smooth:\n" << VIDs_to_smooth << std::endl; }
+    
+    if (verbose) { std::cout << "Matched: " << Matched_eigen.transpose() << std::endl; }
+    if (verbose) { std::cout << "Interpolated Skin Weights: " << W2_eigen << std::endl; }
+    if (verbose) { std::cout << "Inpainted Weights: " << W_inpainted << std::endl; }
+    if (verbose) { std::cout << "Smoothed Inpainted Weights: " << W2_smoothed << std::endl; }
 
-    // Print results
-    std::cout << "Matched: " << Matched_eigen.transpose() << std::endl;
-    std::cout << "Interpolated Skin Weights: " << W2_eigen << std::endl;
-    std::cout << "Inpainted Weights: " << W_inpainted << std::endl;
-    std::cout << "Smoothed Inpainted Weights: " << W2_smoothed << std::endl;
+    for (int i = 0; i < Matched_eigen.size(); ++i) {
+        matched_array.append(Matched_eigen(i));
+    }
+    if (verbose) { std::cout << "Matched array appended." << std::endl; }
+    for (int i = 0; i < W2_eigen.size(); ++i) {
+        interpolated_weights_array.append(Variant(W2_eigen(i)));
+    }
+    if (verbose) { std::cout << "Interpolated weights array appended." << std::endl; }
+
+    for (int i = 0; i < W_inpainted.size(); ++i) {
+        inpainted_weights_array.append(Variant(W_inpainted(i)));
+    }
+    if (verbose) { std::cout << "Inpainted weights array appended." << std::endl; }
+
+    for (int i = 0; i < W2_smoothed.size(); ++i) {
+        smoothed_weights_array.append(Variant(W2_smoothed(i)));
+    }
+    if (verbose) { std::cout << "Smoothed weights array appended." << std::endl; }
+
     return true;
 }
 

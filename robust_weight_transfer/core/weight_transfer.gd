@@ -6,7 +6,7 @@ func _ready() -> void:
 	set_program(program)
 	set_redirect_stdout(_print)
 	# vmcall("run_tests")
-	var args: Dictionary = {
+	var inputs: Dictionary = {
 		"angle_threshold_degrees": 10.0,
 		"distance_threshold": 1.0
 	}
@@ -32,17 +32,26 @@ func _ready() -> void:
 	var normals_2: Array = []
 	for i in range(spheremesh_arrays[Mesh.ARRAY_NORMAL].size()):
 		normals_2.append(spheremesh_arrays[Mesh.ARRAY_NORMAL][i])
-	args["vertices_1"] = vertices_1
-	args["faces_1"] = faces_1
-	args["normals_1"] = normals_1
-	args["vertices_2"] = vertices_2
-	args["faces_2"] = faces_2
-	args["normals_2"] = normals_2
+	inputs["vertices_1"] = vertices_1
+	inputs["faces_1"] = faces_1
+	inputs["normals_1"] = normals_1
+	inputs["vertices_2"] = vertices_2
+	inputs["faces_2"] = faces_2
+	inputs["normals_2"] = normals_2
 	var skin_weights: Array = []
-	for vertex in args["vertices_1"]:
+	for vertex in inputs["vertices_1"]:
 		skin_weights.append([1.0, 0.0])
-	args["skin_weights"] = skin_weights
-	vmcall("robust_weight_transfer", args)
+	inputs["skin_weights"] = skin_weights
+	inputs["verbose"] = true
+	var matched_array: Array = []
+	var interpolated_weights_array: Array = []
+	var inpainted_weights_array: Array = []
+	var smoothed_weights_array: Array = []
+	vmcall("robust_weight_transfer", inputs, matched_array, interpolated_weights_array, inpainted_weights_array, smoothed_weights_array)
+	print("matched_array: ", matched_array.size())
+	print("interpolated_weights_array: ", interpolated_weights_array.size())
+	print("inpainted_weights_array: ", inpainted_weights_array.size())
+	print("smoothed_weights_array: ", smoothed_weights_array.size())
 
 func _print(line) -> void:
 	print(line)
