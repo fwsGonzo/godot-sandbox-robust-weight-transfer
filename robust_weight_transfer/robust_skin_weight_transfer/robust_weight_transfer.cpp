@@ -577,14 +577,26 @@ bool test_find_matches_closest_surface_no_weights() {
     }
     return true;
 }
-extern "C" Variant robust_weight_transfer(Dictionary args, Array matched_array, Array interpolated_weights_array, Array inpainted_weights_array, Array smoothed_weights_array) {
-    Array vertices_1 = args["vertices_1"].value();
-    Array faces_1 = args["faces_1"].value();
-    Array normals_1 = args["normals_1"].value();
+extern "C" Variant robust_weight_transfer(Mesh quadmesh, Mesh spheremesh, Dictionary args, Array matched_array, Array interpolated_weights_array, Array inpainted_weights_array, Array smoothed_weights_array) {
+	Array quadmesh_arrays = quadmesh.surface_get_arrays(0);
+    PackedArray<Vector3> vertices_1_ref = quadmesh_arrays[Mesh::ARRAY_VERTEX];
+    PackedArray<int32_t> faces_1_ref = quadmesh_arrays[Mesh::ARRAY_INDEX];
+    PackedArray<Vector3> normals_1_ref = quadmesh_arrays[Mesh::ARRAY_NORMAL];
     Array skin_weights = args["skin_weights"].value();
-    Array vertices_2 = args["vertices_2"].value();
-    Array faces_2 = args["faces_2"].value();
-    Array normals_2 = args["normals_2"].value();
+
+	std::vector<Vector3> vertices_1 = vertices_1_ref.fetch();
+	std::vector<int32_t> faces_1 = faces_1_ref.fetch();
+	std::vector<Vector3> normals_1 = normals_1_ref.fetch();
+
+	Array spheremesh_arrays = spheremesh.surface_get_arrays(0);
+    PackedArray<Vector3> vertices_2_ref = spheremesh_arrays[Mesh::ARRAY_VERTEX];
+    PackedArray<int32_t> faces_2_ref = spheremesh_arrays[Mesh::ARRAY_INDEX];
+    PackedArray<Vector3> normals_2_ref = spheremesh_arrays[Mesh::ARRAY_NORMAL];
+
+	std::vector<Vector3> vertices_2 = vertices_2_ref.fetch();
+	std::vector<int32_t> faces_2 = faces_2_ref.fetch();
+	std::vector<Vector3> normals_2 = normals_2_ref.fetch();
+
     double angle_threshold_degrees = args["angle_threshold_degrees"].value();
     double distance_threshold = args["distance_threshold"].value();
     bool verbose = args["verbose"].value();
@@ -620,12 +632,14 @@ extern "C" Variant robust_weight_transfer(Dictionary args, Array matched_array, 
         return Variant(1);
     }
 
-    Array skin_weights_first = skin_weights.at(0);
+    PackedArray<float> skin_weights_first_ref = skin_weights.at(0);
+	std::vector<float> skin_weights_first = skin_weights_first_ref.fetch();
     Eigen::MatrixXd skin_weights_eigen(skin_weights.size(), skin_weights_first.size());
     for (int i = 0; i < skin_weights.size(); ++i) {
-        Array skin_weights_row = skin_weights.at(i);
+        PackedArray<float> skin_weights_row_ref = skin_weights.at(i);
+		std::vector<float> skin_weights_row = skin_weights_row_ref.fetch();
         for (int j = 0; j < skin_weights_row.size(); ++j) {
-            skin_weights_eigen(i, j) = skin_weights_row.at(j);
+            skin_weights_eigen(i, j) = skin_weights_row[j];
         }
     }
     if (verbose) { std::cout << "skin_weights_eigen:\n" << skin_weights_eigen << std::endl; }
