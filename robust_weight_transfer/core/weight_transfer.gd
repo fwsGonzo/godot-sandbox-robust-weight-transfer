@@ -24,7 +24,11 @@ func _ready() -> void:
 	var inpainted_weights_array: Array = []
 	var smoothed_weights_array: Array = []
 	vmcall("robust_weight_transfer", source_mesh, target_mesh, inputs, matched_array, interpolated_weights_array, inpainted_weights_array, smoothed_weights_array)
-	print("matched_array: ", matched_array)
+	var true_count = 0
+	for value in matched_array:
+		if value == true:
+			true_count += 1
+	print("matched_array true count: ", true_count, " / ", matched_array.size())
 	print("interpolated_weights_array: ", interpolated_weights_array.size())
 	print("inpainted_weights_array: ", inpainted_weights_array.size())
 	print("smoothed_weights_array: ", smoothed_weights_array.size())
