@@ -11,7 +11,7 @@ func _ready() -> void:
 		"distance_threshold": 1.0
 	}
 	var quadmesh: QuadMesh = QuadMesh.new()
-	var spheremesh: QuadMesh = QuadMesh.new()
+	var spheremesh: SphereMesh = SphereMesh.new()
 	var quadmesh_arrays: Array = quadmesh.surface_get_arrays(0)
 	var spheremesh_arrays: Array = spheremesh.surface_get_arrays(0)
 	var vertices_1: Array = []
@@ -42,7 +42,7 @@ func _ready() -> void:
 	for vertex in inputs["vertices_1"]:
 		skin_weights.append([1.0, 0.0])
 	inputs["skin_weights"] = skin_weights
-	inputs["verbose"] = true
+	inputs["verbose"] = false
 	var matched_array: Array = []
 	var interpolated_weights_array: Array = []
 	var inpainted_weights_array: Array = []
