@@ -577,29 +577,72 @@ bool test_find_matches_closest_surface_no_weights() {
     }
     return true;
 }
-extern "C" Variant robust_weight_transfer(Mesh quadmesh, Mesh spheremesh, Dictionary args, Array matched_array, Array interpolated_weights_array, Array inpainted_weights_array, Array smoothed_weights_array) {
-	Array quadmesh_arrays = quadmesh.surface_get_arrays(0);
-    PackedArray<Vector3> vertices_1_ref = quadmesh_arrays[Mesh::ARRAY_VERTEX];
-    PackedArray<int32_t> faces_1_ref = quadmesh_arrays[Mesh::ARRAY_INDEX];
-    PackedArray<Vector3> normals_1_ref = quadmesh_arrays[Mesh::ARRAY_NORMAL];
-    Array skin_weights = args["skin_weights"].value();
 
-	std::vector<Vector3> vertices_1 = vertices_1_ref.fetch();
-	std::vector<int32_t> faces_1 = faces_1_ref.fetch();
-	std::vector<Vector3> normals_1 = normals_1_ref.fetch();
+extern "C" Variant robust_weight_transfer(Mesh source_mesh, Mesh target_mesh, Dictionary arguments, Array matched_array, Array interpolated_weights_array, Array inpainted_weights_array, Array smoothed_weights_array) {
+    bool verbose = arguments["verbose"].value();
+    double angle_threshold_degrees = arguments["angle_threshold_degrees"].value();
+    double distance_threshold = arguments["distance_threshold"].value();
+    int64_t source_mesh_surface = arguments["source_mesh_surface"].value();
+    int64_t target_mesh_surface = arguments["target_mesh_surface"].value();
 
-	Array spheremesh_arrays = spheremesh.surface_get_arrays(0);
-    PackedArray<Vector3> vertices_2_ref = spheremesh_arrays[Mesh::ARRAY_VERTEX];
-    PackedArray<int32_t> faces_2_ref = spheremesh_arrays[Mesh::ARRAY_INDEX];
-    PackedArray<Vector3> normals_2_ref = spheremesh_arrays[Mesh::ARRAY_NORMAL];
+    if (verbose) { std::cout << "arguments:\n" << std::endl; }
 
-	std::vector<Vector3> vertices_2 = vertices_2_ref.fetch();
-	std::vector<int32_t> faces_2 = faces_2_ref.fetch();
-	std::vector<Vector3> normals_2 = normals_2_ref.fetch();
+    Array source_mesh_arrays = source_mesh.surface_get_arrays(source_mesh_surface);
+    Variant vertices_1_variant = source_mesh_arrays[Mesh::ARRAY_VERTEX].get();
+    if (vertices_1_variant == Nil) {
+        std::cerr << "vertices_1_variant is null" << std::endl;
+        return false;
+    }
+    PackedArray<Vector3> vertices_1_ref = vertices_1_variant;
 
-    double angle_threshold_degrees = args["angle_threshold_degrees"].value();
-    double distance_threshold = args["distance_threshold"].value();
-    bool verbose = args["verbose"].value();
+    Variant faces_1_variant = source_mesh_arrays[Mesh::ARRAY_INDEX].get();
+    if (faces_1_variant == Nil) {
+        std::cerr << "faces_1_variant is null" << std::endl;
+        return false;
+    }
+    PackedArray<int32_t> faces_1_ref = faces_1_variant;
+
+    Variant normals_1_variant = source_mesh_arrays[Mesh::ARRAY_NORMAL].get();
+    if (normals_1_variant == Nil) {
+        std::cerr << "normals_1_variant is null" << std::endl;
+        return false;
+    }
+    PackedArray<Vector3> normals_1_ref = normals_1_variant;
+
+    Variant skin_weights_variant = source_mesh_arrays[Mesh::ARRAY_WEIGHTS].get();
+    if (skin_weights_variant == Nil) {
+        std::cerr << "skin_weights_variant is null" << std::endl;
+        return false;
+    }
+    PackedArray<float> skin_weights_ref = skin_weights_variant;
+
+    if (verbose) { std::cout << "source_mesh_arrays:\n" << std::endl; }
+
+    if (vertices_1_ref.is_empty() || faces_1_ref.is_empty() || normals_1_ref.is_empty() || skin_weights_ref.is_empty()) {
+        std::cerr << "One or more source mesh arrays are empty" << std::endl;
+        return false;
+    }
+
+    std::vector<Vector3> vertices_1 = vertices_1_ref.fetch();
+    std::vector<int32_t> faces_1 = faces_1_ref.fetch();
+    std::vector<Vector3> normals_1 = normals_1_ref.fetch();
+    std::vector<float> skin_weights_1 = skin_weights_ref.fetch();
+
+    Array target_mesh_arrays = target_mesh.surface_get_arrays(target_mesh_surface);
+    PackedArray<Vector3> vertices_2_ref = target_mesh_arrays[Mesh::ARRAY_VERTEX].get();
+    PackedArray<int32_t> faces_2_ref = target_mesh_arrays[Mesh::ARRAY_INDEX].get();
+    PackedArray<Vector3> normals_2_ref = target_mesh_arrays[Mesh::ARRAY_NORMAL].get();
+
+    if (verbose) { std::cout << "target_mesh_arrays:\n" << std::endl; }
+
+    if (vertices_2_ref.is_empty() || faces_2_ref.is_empty() || normals_2_ref.is_empty()) {
+        std::cerr << "One or more target mesh arrays are empty" << std::endl;
+        return false;
+    }
+
+    std::vector<Vector3> vertices_2 = vertices_2_ref.fetch();
+    std::vector<int32_t> faces_2 = faces_2_ref.fetch();
+    std::vector<Vector3> normals_2 = normals_2_ref.fetch();
 
     Eigen::MatrixXd vertices_1_eigen(vertices_1.size(), 3);
     for (int i = 0; i < vertices_1.size(); ++i) {
@@ -627,21 +670,18 @@ extern "C" Variant robust_weight_transfer(Mesh quadmesh, Mesh spheremesh, Dictio
     }
     if (verbose) { std::cout << "normals_1_eigen:\n" << normals_1_eigen << std::endl; }
 
-    if (!skin_weights.size()) {
+    if (skin_weights_1.empty()) {
         std::cerr << "skin_weights array is empty" << std::endl;
-        return Variant(1);
+        return false;
     }
-
-    PackedArray<float> skin_weights_first_ref = skin_weights.at(0);
-	std::vector<float> skin_weights_first = skin_weights_first_ref.fetch();
-    Eigen::MatrixXd skin_weights_eigen(skin_weights.size(), skin_weights_first.size());
-    for (int i = 0; i < skin_weights.size(); ++i) {
-        PackedArray<float> skin_weights_row_ref = skin_weights.at(i);
-		std::vector<float> skin_weights_row = skin_weights_row_ref.fetch();
-        for (int j = 0; j < skin_weights_row.size(); ++j) {
-            skin_weights_eigen(i, j) = skin_weights_row[j];
+    int32_t num_bones = skin_weights_1.size() / vertices_1.size();
+    Eigen::MatrixXd skin_weights_eigen(vertices_1.size(), num_bones);
+    for (int i = 0; i < vertices_1.size(); ++i) {
+        for (int j = 0; j < num_bones; ++j) {
+            skin_weights_eigen(i, j) = skin_weights_1[i * num_bones + j];
         }
     }
+
     if (verbose) { std::cout << "skin_weights_eigen:\n" << skin_weights_eigen << std::endl; }
 
     Eigen::MatrixXd vertices_2_eigen(vertices_2.size(), 3);
