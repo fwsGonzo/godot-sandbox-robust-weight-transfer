@@ -578,6 +578,170 @@ bool test_find_matches_closest_surface_no_weights() {
     return true;
 }
 
+extern "C" Variant robust_weight_transfer(Dictionary args) {
+    Array vertices_1 = args["vertices_1"].value();
+    Array faces_1 = args["faces_1"].value();
+    Array normals_1 = args["normals_1"].value();
+    Array skin_weights = args["skin_weights"].value();
+    Array vertices_2 = args["vertices_2"].value();
+    Array faces_2 = args["faces_2"].value();
+    Array normals_2 = args["normals_2"].value();
+    double angle_threshold_degrees = args["angle_threshold_degrees"].value();
+    double distance_threshold_squared = args["distance_threshold_squared"].value();
+
+    Eigen::MatrixXd vertices_1_eigen(vertices_1.size() / 3, 3);
+    for (int i = 0; i < vertices_1.size(); ++i) {
+        Vector3 v = vertices_1[i];
+        vertices_1_eigen(i, 0) = v.x;
+        vertices_1_eigen(i, 1) = v.y;
+        vertices_1_eigen(i, 2) = v.z;
+    }
+    std::cout << "vertices_1_eigen:\n" << vertices_1_eigen << std::endl;
+
+    Eigen::MatrixXi faces_1_eigen(faces_1.size(), 3);
+    for (int i = 0; i < faces_1.size(); ++i) {
+        Array face = faces_1[i];
+        for (int j = 0; j < face.size(); ++j) {
+            faces_1_eigen(i, j) = face[j];
+        }
+    }
+    std::cout << "faces_1_eigen:\n" << faces_1_eigen << std::endl;
+
+    Eigen::MatrixXd normals_1_eigen(normals_1.size(), 3);
+    for (int i = 0; i < normals_1.size(); ++i) {
+        Vector3 n = normals_1[i];
+        normals_1_eigen(i, 0) = n.x;
+        normals_1_eigen(i, 1) = n.y;
+        normals_1_eigen(i, 2) = n.z;
+    }
+    std::cout << "normals_1_eigen:\n" << normals_1_eigen << std::endl;
+
+    if (skin_weights.size() == 0) {
+        std::cerr << "skin_weights array is empty" << std::endl;
+        return Variant(1);
+    }
+
+    Array skin_weights_first = skin_weights[0];
+    Eigen::MatrixXd skin_weights_eigen(skin_weights.size(), skin_weights_first.size());
+    for (int i = 0; i < skin_weights.size(); ++i) {
+        Array skin_weights_row = skin_weights[i];
+        for (int j = 0; j < skin_weights_row.size(); ++j) {
+            skin_weights_eigen(i, j) = skin_weights_row[j];
+        }
+    }
+    std::cout << "skin_weights_eigen:\n" << skin_weights_eigen << std::endl;
+
+    Eigen::MatrixXd vertices_2_eigen(vertices_2.size(), 3);
+    for (int i = 0; i < vertices_2.size(); ++i) {
+        Vector3 v = vertices_2[i];
+        vertices_2_eigen(i, 0) = v.x;
+        vertices_2_eigen(i, 1) = v.y;
+        vertices_2_eigen(i, 2) = v.z;
+    }
+    std::cout << "vertices_2_eigen:\n" << vertices_2_eigen << std::endl;
+
+    Eigen::MatrixXi faces_2_eigen(faces_2.size(), 3);
+    for (int i = 0; i < faces_2.size(); ++i) {
+        Array face = faces_2[i];
+        for (int j = 0; j < face.size(); ++j) {
+            faces_2_eigen(i, j) = face[j];
+        }
+    }
+    std::cout << "faces_2_eigen:\n" << faces_2_eigen << std::endl;
+
+    Eigen::MatrixXd normals_2_eigen(normals_2.size(), 3);
+    for (int i = 0; i < normals_2.size(); ++i) {
+        Vector3 n = normals_2[i];
+        normals_2_eigen(i, 0) = n.x;
+        normals_2_eigen(i, 1) = n.y;
+        normals_2_eigen(i, 2) = n.z;
+    }
+    std::cout << "normals_2_eigen:\n" << normals_2_eigen << std::endl;
+
+    // Section 3.1 Closest Point Matching
+    std::cout << "Distance threshold squared: " << distance_threshold_squared << std::endl;
+
+    Eigen::MatrixXd W2_eigen = Eigen::MatrixXd::Zero(vertices_2_eigen.rows(), skin_weights_eigen.cols());
+    Eigen::Array<bool, Eigen::Dynamic, 1> Matched_eigen;
+
+    find_matches_closest_surface(vertices_1_eigen, faces_1_eigen, normals_1_eigen, vertices_2_eigen, faces_2_eigen, normals_2_eigen, skin_weights_eigen, distance_threshold_squared, angle_threshold_degrees, W2_eigen, Matched_eigen);
+    std::cout << "Matched_eigen:\n" << Matched_eigen << std::endl;
+    std::cout << "W2_eigen:\n" << W2_eigen << std::endl;
+
+    // Section 3.2 Skinning Weights Inpainting
+    Eigen::MatrixXd W_inpainted;
+    bool success = inpaint(vertices_2_eigen, faces_2_eigen, W2_eigen, Matched_eigen, W_inpainted);
+    std::cout << "Inpainting success: " << success << std::endl;
+    std::cout << "W_inpainted:\n" << W_inpainted << std::endl;
+
+    // Optional smoothing
+    Eigen::MatrixXd W2_smoothed;
+    Eigen::Array<bool, Eigen::Dynamic, 1> VIDs_to_smooth;
+    smooth(W2_smoothed, VIDs_to_smooth, vertices_2_eigen, faces_2_eigen, W_inpainted, Matched_eigen, distance_threshold, 10, 0.2);
+    std::cout << "W2_smoothed:\n" << W2_smoothed << std::endl;
+    std::cout << "VIDs_to_smooth:\n" << VIDs_to_smooth << std::endl;
+
+    // Print results
+    std::cout << "Matched: " << Matched_eigen.transpose() << std::endl;
+    std::cout << "Interpolated Skin Weights: " << W2_eigen << std::endl;
+    std::cout << "Inpainted Weights: " << W_inpainted << std::endl;
+    std::cout << "Smoothed Inpainted Weights: " << W2_smoothed << std::endl;
+    return true;
+}
+
+bool test_robust_weight_transfer() {
+    Eigen::MatrixXd vertices_1(3, 3);
+    vertices_1 << 0, 0, 0,
+                  1, 0, 0,
+                  0, 1, 0;
+    Eigen::MatrixXi faces_1(1, 3);
+    faces_1 << 0, 1, 2;
+    Eigen::MatrixXd normals_1(3, 3);
+    normals_1 << 0, 0, 1,
+                 0, 0, 1,
+                 0, 0, 1;
+    Eigen::MatrixXd skin_weights(3, 2);
+    skin_weights << 1, 0,
+                    0, 1,
+                    0.5, 0.5;
+
+    Eigen::MatrixXd vertices_2(2, 3);
+    vertices_2 << 0.1, 0.1, 0,
+                  2, 2, 2;
+    Eigen::MatrixXi faces_2(1, 2);
+    faces_2 << 0, 1;
+    Eigen::MatrixXd normals_2(2, 3);
+    normals_2 << 0, 0, 1,
+                 1, 0, 0;
+
+    // Section 3.1 Closest Point Matching
+    double distance_threshold = 0.05 * (vertices_2.row(1) - vertices_2.row(0)).norm();
+    double distance_threshold_squared = distance_threshold * distance_threshold;
+    int angle_threshold_degrees = 30;
+
+    Eigen::MatrixXd W2 = Eigen::MatrixXd::Zero(vertices_2.rows(), skin_weights.cols());
+    Eigen::Array<bool, Eigen::Dynamic, 1> Matched;
+
+    find_matches_closest_surface(vertices_1, faces_1, normals_1, vertices_2, faces_2, normals_2, skin_weights, distance_threshold_squared, angle_threshold_degrees, W2, Matched);
+
+    // Section 3.2 Skinning Weights Inpainting
+    Eigen::MatrixXd W_inpainted;
+    bool success = inpaint(vertices_2, faces_2, W2, Matched, W_inpainted);
+    std::cout << "Inpainting success: " << success << std::endl;
+
+    // Optional smoothing
+    Eigen::MatrixXd W2_smoothed;
+    Eigen::Array<bool, Eigen::Dynamic, 1> VIDs_to_smooth;
+    smooth(W2_smoothed, VIDs_to_smooth, vertices_2, faces_2, W_inpainted, Matched, distance_threshold, 10, 0.2);
+
+    // Print results
+    std::cout << "Matched: " << Matched.transpose() << std::endl;
+    std::cout << "Interpolated Skin Weights: " << W2 << std::endl;
+    std::cout << "Inpainted Weights: " << W_inpainted << std::endl;
+    std::cout << "Smoothed Inpainted Weights: " << W2_smoothed << std::endl;
+    return true;
+}
+
 extern "C" Variant run_tests() {
     bool all_tests_passed = true;
     if (!test_find_closest_point_on_surface()) {
@@ -614,6 +778,10 @@ extern "C" Variant run_tests() {
     }
     if (!test_find_matches_closest_surface_mesh()) {
         std::cerr << "test_find_matches_closest_surface_mesh failed" << std::endl;
+        all_tests_passed = false;
+    }
+    if (!test_robust_weight_transfer()) {
+        std::cerr << "test_robust_weight_transfer failed" << std::endl;
         all_tests_passed = false;
     }
     if (all_tests_passed) {
