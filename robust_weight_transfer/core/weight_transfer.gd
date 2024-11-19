@@ -37,7 +37,7 @@ func _ready() -> void:
 			Vector3(1, 0, 0)
 		],
 		"angle_threshold_degrees": 10.0,
-		"distance_threshold_squared": 5.0
+		"distance_threshold_squared": 1.0
 	}
 	vmcall("robust_weight_transfer", args)
 

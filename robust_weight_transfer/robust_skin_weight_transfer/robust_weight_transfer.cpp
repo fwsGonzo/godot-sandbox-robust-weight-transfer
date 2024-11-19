@@ -587,7 +587,7 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
     Array faces_2 = args["faces_2"].value();
     Array normals_2 = args["normals_2"].value();
     double angle_threshold_degrees = args["angle_threshold_degrees"].value();
-    double distance_threshold_squared = args["distance_threshold_squared"].value();
+    double distance_threshold = args["distance_threshold"].value();
 
     Eigen::MatrixXd vertices_1_eigen(vertices_1.size() / 3, 3);
     for (int i = 0; i < vertices_1.size(); ++i) {
@@ -659,12 +659,12 @@ extern "C" Variant robust_weight_transfer(Dictionary args) {
     std::cout << "normals_2_eigen:\n" << normals_2_eigen << std::endl;
 
     // Section 3.1 Closest Point Matching
-    std::cout << "Distance threshold squared: " << distance_threshold_squared << std::endl;
+    std::cout << "Distance threshold: " << distance_threshold << std::endl;
 
     Eigen::MatrixXd W2_eigen = Eigen::MatrixXd::Zero(vertices_2_eigen.rows(), skin_weights_eigen.cols());
     Eigen::Array<bool, Eigen::Dynamic, 1> Matched_eigen;
 
-    find_matches_closest_surface(vertices_1_eigen, faces_1_eigen, normals_1_eigen, vertices_2_eigen, faces_2_eigen, normals_2_eigen, skin_weights_eigen, distance_threshold_squared, angle_threshold_degrees, W2_eigen, Matched_eigen);
+    find_matches_closest_surface(vertices_1_eigen, faces_1_eigen, normals_1_eigen, vertices_2_eigen, faces_2_eigen, normals_2_eigen, skin_weights_eigen, distance_threshold * distance_threshold, angle_threshold_degrees, W2_eigen, Matched_eigen);
     std::cout << "Matched_eigen:\n" << Matched_eigen << std::endl;
     std::cout << "W2_eigen:\n" << W2_eigen << std::endl;
 
