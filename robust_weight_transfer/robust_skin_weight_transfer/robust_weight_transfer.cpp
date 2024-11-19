@@ -578,6 +578,60 @@ bool test_find_matches_closest_surface_no_weights() {
     return true;
 }
 
+
+bool test_robust_weight_transfer() {
+    Eigen::MatrixXd vertices_1(3, 3);
+    vertices_1 << 0, 0, 0,
+                  1, 0, 0,
+                  0, 1, 0;
+    Eigen::MatrixXi faces_1(1, 3);
+    faces_1 << 0, 1, 2;
+    Eigen::MatrixXd normals_1(3, 3);
+    normals_1 << 0, 0, 1,
+                 0, 0, 1,
+                 0, 0, 1;
+    Eigen::MatrixXd skin_weights(3, 2);
+    skin_weights << 1, 0,
+                    0, 1,
+                    0.5, 0.5;
+
+    Eigen::MatrixXd vertices_2(2, 3);
+    vertices_2 << 0.1, 0.1, 0,
+                  2, 2, 2;
+    Eigen::MatrixXi faces_2(1, 2);
+    faces_2 << 0, 1;
+    Eigen::MatrixXd normals_2(2, 3);
+    normals_2 << 0, 0, 1,
+                 1, 0, 0;
+
+    // Section 3.1 Closest Point Matching
+    double distance_threshold = 0.05 * (vertices_2.row(1) - vertices_2.row(0)).norm();
+    double distance_threshold_squared = distance_threshold * distance_threshold;
+    int angle_threshold_degrees = 30;
+
+    Eigen::MatrixXd W2 = Eigen::MatrixXd::Zero(vertices_2.rows(), skin_weights.cols());
+    Eigen::Array<bool, Eigen::Dynamic, 1> Matched;
+
+    find_matches_closest_surface(vertices_1, faces_1, normals_1, vertices_2, faces_2, normals_2, skin_weights, distance_threshold_squared, angle_threshold_degrees, W2, Matched);
+
+    // Section 3.2 Skinning Weights Inpainting
+    Eigen::MatrixXd W_inpainted;
+    bool success = inpaint(vertices_2, faces_2, W2, Matched, W_inpainted);
+    std::cout << "Inpainting success: " << success << std::endl;
+
+    // Optional smoothing
+    Eigen::MatrixXd W2_smoothed;
+    Eigen::Array<bool, Eigen::Dynamic, 1> VIDs_to_smooth;
+    smooth(W2_smoothed, VIDs_to_smooth, vertices_2, faces_2, W_inpainted, Matched, distance_threshold, 10, 0.2);
+
+    // Print results
+    std::cout << "Matched: " << Matched.transpose() << std::endl;
+    std::cout << "Interpolated Skin Weights: " << W2 << std::endl;
+    std::cout << "Inpainted Weights: " << W_inpainted << std::endl;
+    std::cout << "Smoothed Inpainted Weights: " << W2_smoothed << std::endl;
+    return true;
+}
+
 extern "C" Variant run_tests() {
     bool all_tests_passed = true;
     if (!test_find_closest_point_on_surface()) {
@@ -614,6 +668,10 @@ extern "C" Variant run_tests() {
     }
     if (!test_find_matches_closest_surface_mesh()) {
         std::cerr << "test_find_matches_closest_surface_mesh failed" << std::endl;
+        all_tests_passed = false;
+    }
+    if (!test_robust_weight_transfer()) {
+        std::cerr << "test_robust_weight_transfer failed" << std::endl;
         all_tests_passed = false;
     }
     if (all_tests_passed) {
