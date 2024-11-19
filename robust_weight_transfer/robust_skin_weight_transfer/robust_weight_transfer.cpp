@@ -579,6 +579,11 @@ bool test_find_matches_closest_surface_no_weights() {
 }
 
 extern "C" Variant robust_weight_transfer(Mesh source_mesh, Mesh target_mesh, Dictionary arguments, Array matched_array, Array interpolated_weights_array, Array inpainted_weights_array, Array smoothed_weights_array) {
+    if (!arguments.has("verbose") || !arguments.has("angle_threshold_degrees") || !arguments.has("distance_threshold") || !arguments.has("source_mesh_surface") || !arguments.has("target_mesh_surface")) {
+        std::cerr << "Missing required arguments" << std::endl;
+        return false;
+    }
+
     bool verbose = arguments["verbose"].value();
     double angle_threshold_degrees = arguments["angle_threshold_degrees"].value();
     double distance_threshold = arguments["distance_threshold"].value();
@@ -588,6 +593,11 @@ extern "C" Variant robust_weight_transfer(Mesh source_mesh, Mesh target_mesh, Di
     if (verbose) { std::cout << "arguments:\n" << std::endl; }
 
     Array source_mesh_arrays = source_mesh.surface_get_arrays(source_mesh_surface);
+    if (source_mesh_arrays.size() <= Mesh::ARRAY_VERTEX || source_mesh_arrays.size() <= Mesh::ARRAY_INDEX || source_mesh_arrays.size() <= Mesh::ARRAY_NORMAL || source_mesh_arrays.size() <= Mesh::ARRAY_WEIGHTS) {
+        std::cerr << "Source mesh arrays are incomplete" << std::endl;
+        return false;
+    }
+
     Variant vertices_1_variant = source_mesh_arrays[Mesh::ARRAY_VERTEX].get();
     if (vertices_1_variant == Nil) {
         std::cerr << "vertices_1_variant is null" << std::endl;
@@ -629,9 +639,30 @@ extern "C" Variant robust_weight_transfer(Mesh source_mesh, Mesh target_mesh, Di
     std::vector<float> skin_weights_1 = skin_weights_ref.fetch();
 
     Array target_mesh_arrays = target_mesh.surface_get_arrays(target_mesh_surface);
-    PackedArray<Vector3> vertices_2_ref = target_mesh_arrays[Mesh::ARRAY_VERTEX].get();
-    PackedArray<int32_t> faces_2_ref = target_mesh_arrays[Mesh::ARRAY_INDEX].get();
-    PackedArray<Vector3> normals_2_ref = target_mesh_arrays[Mesh::ARRAY_NORMAL].get();
+    if (target_mesh_arrays.size() <= Mesh::ARRAY_VERTEX || target_mesh_arrays.size() <= Mesh::ARRAY_INDEX || target_mesh_arrays.size() <= Mesh::ARRAY_NORMAL) {
+        std::cerr << "Target mesh arrays are incomplete" << std::endl;
+        return false;
+    }
+    Variant vertices_2_variant = target_mesh_arrays[Mesh::ARRAY_VERTEX].get();
+    if (vertices_2_variant == Nil) {
+        std::cerr << "vertices_2_variant is null" << std::endl;
+        return false;
+    }
+    PackedArray<Vector3> vertices_2_ref = vertices_2_variant;
+
+    Variant faces_2_variant = target_mesh_arrays[Mesh::ARRAY_INDEX].get();
+    if (faces_2_variant == Nil) {
+        std::cerr << "faces_2_variant is null" << std::endl;
+        return false;
+    }
+    PackedArray<int32_t> faces_2_ref = faces_2_variant;
+
+    Variant normals_2_variant = target_mesh_arrays[Mesh::ARRAY_NORMAL].get();
+    if (normals_2_variant == Nil) {
+        std::cerr << "normals_2_variant is null" << std::endl;
+        return false;
+    }
+    PackedArray<Vector3> normals_2_ref = normals_2_variant;
 
     if (verbose) { std::cout << "target_mesh_arrays:\n" << std::endl; }
 
