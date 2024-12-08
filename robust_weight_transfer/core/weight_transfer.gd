@@ -1,12 +1,10 @@
-extends Sandbox
+extends Node3D
 
-const program: ELFScript = preload("../robust_weight_transfer.elf")
-
+func _init() -> void:
+	Sandbox.load_binary_translation("res://bintr.so")
+	pass
 
 func _ready() -> void:
-	set_program(program)
-	set_redirect_stdout(_print)
-	# vmcall("run_tests")
 	var inputs: Dictionary = {
 		"angle_threshold_degrees": 10.0,
 		"distance_threshold": 1.0
@@ -23,7 +21,18 @@ func _ready() -> void:
 	var interpolated_weights_array: Array = []
 	var inpainted_weights_array: Array = []
 	var smoothed_weights_array: Array = []
-	vmcall("robust_weight_transfer", source_mesh, target_mesh, inputs, matched_array, interpolated_weights_array, inpainted_weights_array, smoothed_weights_array)
+
+	var vm = get_node("Sandbox") as Sandbox_RobustWeightTransferRobustWeightTransfer
+	if !vm.is_binary_translated():
+		vm.try_compile_binary_translation("res://bintr", "clang-19", "", true, true)
+
+	vm.run_tests()
+
+	var t0 = Time.get_ticks_msec()
+	vm.robust_weight_transfer(source_mesh, target_mesh, inputs, matched_array, interpolated_weights_array, inpainted_weights_array, smoothed_weights_array)
+	var t1 = Time.get_ticks_msec()
+	print("It took ", t1 - t0, " milliseconds to compute")
+
 	var true_count = 0
 	for value in matched_array:
 		if value == true:
@@ -58,6 +67,3 @@ func _ready() -> void:
 				finite_smoothed_samples.append([i, smoothed_weights_array[i]])
 	print("smoothed_weights_array: ", smoothed_weights_array.size(), " finite: ", finite_smoothed)
 	print("finite smoothed samples: ", finite_smoothed_samples)
-
-func _print(line) -> void:
-	print(line)

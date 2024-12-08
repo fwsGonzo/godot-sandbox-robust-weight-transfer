@@ -1,10 +1,12 @@
-[gd_scene load_steps=53 format=3 uid="uid://bkhi5j0mx10yc"]
+[gd_scene load_steps=55 format=3 uid="uid://bkhi5j0mx10yc"]
 
 [ext_resource type="Script" uid="uid://bg3xsfe5vw5x6" path="res://robust_weight_transfer/core/weight_transfer.gd" id="1_6tmkd"]
 [ext_resource type="PackedScene" uid="uid://curhgl65ghrdp" path="res://robust_weight_transfer/art/constraint_twist_sample/VRM1_Constraint_Twist_Sample.vrm" id="2_f7rt7"]
-[ext_resource type="Script" uid="uid://dpialuoe62hqw" path="res://addons/vrm/vrm_spring_bone.gd" id="3_v7855"]
-[ext_resource type="Script" uid="uid://bbjn73mro2vej" path="res://addons/vrm/vrm_collider_group.gd" id="4_xydxb"]
-[ext_resource type="Script" uid="uid://biitq6ocv7akw" path="res://addons/vrm/vrm_collider.gd" id="5_0u4ap"]
+[ext_resource type="Script" path="res://addons/vrm/vrm_spring_bone.gd" id="3_v7855"]
+[ext_resource type="Script" path="res://addons/vrm/vrm_collider_group.gd" id="4_xydxb"]
+[ext_resource type="Script" path="res://addons/vrm/vrm_collider.gd" id="5_0u4ap"]
+[ext_resource type="Script" uid="uid://b58pepw0ilkun" path="res://robust_weight_transfer/robust_weight_transfer.elf" id="7_v7855"]
+[ext_resource type="Script" uid="uid://b58pepw0ilkun" path="res://robust_weight_transfer/robust_weight_transfer.elf" id="7_xydxb"]
 
 [sub_resource type="Resource" id="Resource_ehpem"]
 resource_name = "LeftUpperLeg"
@@ -332,8 +334,8 @@ resource_name = "LeftHand"
 script = ExtResource("5_0u4ap")
 node_path = NodePath("")
 bone = "LeftHand"
-offset = Vector3(-3.32477e-05, -0.0190559, 1.23442e-07)
-tail = Vector3(-3.32477e-05, -0.0190559, 1.23442e-07)
+offset = Vector3(-3.32477e-05, -0.0190559, 1.23441e-07)
+tail = Vector3(-3.32477e-05, -0.0190559, 1.23441e-07)
 radius = 0.0285839
 is_capsule = false
 gizmo_color = Color(1, 0, 1, 1)
@@ -616,32 +618,37 @@ center_bone = ""
 center_node = NodePath("")
 
 [node name="Node3D" type="Node3D"]
-
-[node name="Sandbox" type="Sandbox" parent="."]
-allocations_max = 20000
 script = ExtResource("1_6tmkd")
 
-[node name="VRM1_Constraint_Twist_Sample" parent="Sandbox" instance=ExtResource("2_f7rt7")]
+[node name="VRM1_Constraint_Twist_Sample" parent="." instance=ExtResource("2_f7rt7")]
 spring_bones = Array[ExtResource("3_v7855")]([SubResource("Resource_phw4v"), SubResource("Resource_6pr5y"), SubResource("Resource_ws7cl"), SubResource("Resource_cr04a"), SubResource("Resource_t4leo"), SubResource("Resource_w7sq0"), SubResource("Resource_u87lv"), SubResource("Resource_1tcr8"), SubResource("Resource_qdfgp"), SubResource("Resource_6wtpa"), SubResource("Resource_w3q4g"), SubResource("Resource_llig6"), SubResource("Resource_0xp3o"), SubResource("Resource_gsspr"), SubResource("Resource_f0mnk"), SubResource("Resource_ihsbh"), SubResource("Resource_t832o"), SubResource("Resource_3jrej"), SubResource("Resource_3ay8q"), SubResource("Resource_puadn"), SubResource("Resource_ouodl"), SubResource("Resource_b2sro")])
 collider_groups = Array[ExtResource("4_xydxb")]([SubResource("Resource_jhoec"), SubResource("Resource_impg0"), SubResource("Resource_lj3k7"), SubResource("Resource_xgq5t"), SubResource("Resource_d7gpk"), SubResource("Resource_xyqbt"), SubResource("Resource_adlj3"), SubResource("Resource_2uwv2"), SubResource("Resource_7oj0e"), SubResource("Resource_p5txa"), SubResource("Resource_y7tel"), SubResource("Resource_o13iw")])
 collider_library = Array[ExtResource("5_0u4ap")]([SubResource("Resource_ehpem"), SubResource("Resource_sd5vm"), SubResource("Resource_bxdus"), SubResource("Resource_on6rb"), SubResource("Resource_gayt8"), SubResource("Resource_emlaj"), SubResource("Resource_2ewp2"), SubResource("Resource_mi7ih"), SubResource("Resource_o1jm1"), SubResource("Resource_42fh0"), SubResource("Resource_rn8ah"), SubResource("Resource_3jbfo"), SubResource("Resource_vsh5n")])
 
-[node name="GeneralSkeleton" parent="Sandbox/VRM1_Constraint_Twist_Sample/Root_" index="0"]
-bones/1/rotation = Quaternion(0.010458, 0, -2.2266e-08, 0.999945)
-bones/9/rotation = Quaternion(0.010458, 0, 2.2266e-08, 0.999945)
-bones/85/rotation = Quaternion(0, -1.50663e-05, 0.707107, 0.707107)
-bones/87/rotation = Quaternion(0, -1.04638e-05, 0.707107, 0.707107)
-bones/119/rotation = Quaternion(0, 1.04652e-05, -0.707107, 0.707107)
-bones/121/rotation = Quaternion(0, 5.86293e-06, -0.707107, 0.707107)
+[node name="GeneralSkeleton" parent="VRM1_Constraint_Twist_Sample/Root_" index="0"]
+bones/1/rotation = Quaternion(0.010458, 0, -2.11093e-08, 0.999945)
+bones/9/rotation = Quaternion(0.010458, 0, 2.11093e-08, 0.999945)
+bones/85/rotation = Quaternion(0, -1.49724e-05, 0.707107, 0.707107)
+bones/87/rotation = Quaternion(0, -1.03706e-05, 0.707107, 0.707107)
+bones/119/rotation = Quaternion(0, 1.0371e-05, -0.707107, 0.707107)
+bones/121/rotation = Quaternion(0, 5.76942e-06, -0.707107, 0.707107)
 
-[node name="Head" parent="Sandbox/VRM1_Constraint_Twist_Sample/Root_/GeneralSkeleton" index="4"]
+[node name="Head" parent="VRM1_Constraint_Twist_Sample/Root_/GeneralSkeleton" index="4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.67827e-16, 1.38627, -0.024711)
 
-[node name="secondary" parent="Sandbox/VRM1_Constraint_Twist_Sample" index="1"]
+[node name="secondary" parent="VRM1_Constraint_Twist_Sample" index="1"]
 collider_groups = Array[ExtResource("4_xydxb")]([SubResource("Resource_jhoec"), SubResource("Resource_impg0"), SubResource("Resource_lj3k7"), SubResource("Resource_xgq5t"), SubResource("Resource_d7gpk"), SubResource("Resource_xyqbt"), SubResource("Resource_adlj3"), SubResource("Resource_2uwv2"), SubResource("Resource_7oj0e"), SubResource("Resource_p5txa"), SubResource("Resource_y7tel"), SubResource("Resource_o13iw")])
 collider_library = Array[ExtResource("5_0u4ap")]([SubResource("Resource_ehpem"), SubResource("Resource_sd5vm"), SubResource("Resource_bxdus"), SubResource("Resource_on6rb"), SubResource("Resource_gayt8"), SubResource("Resource_emlaj"), SubResource("Resource_2ewp2"), SubResource("Resource_mi7ih"), SubResource("Resource_o1jm1"), SubResource("Resource_42fh0"), SubResource("Resource_rn8ah"), SubResource("Resource_3jbfo"), SubResource("Resource_vsh5n")])
 
-[node name="BoneNodeConstraintApplier" parent="Sandbox/VRM1_Constraint_Twist_Sample" index="3"]
+[node name="BoneNodeConstraintApplier" parent="VRM1_Constraint_Twist_Sample" index="3"]
 skeleton = NodePath("../Root_/GeneralSkeleton")
 
-[editable path="Sandbox/VRM1_Constraint_Twist_Sample"]
+[node name="Sandbox" type="Sandbox" parent="."]
+memory_max = 24
+execution_timeout = 0
+allocations_max = 20000
+program = ExtResource("7_v7855")
+script = ExtResource("7_xydxb")
+metadata/_custom_type_script = ExtResource("7_xydxb")
+
+[editable path="VRM1_Constraint_Twist_Sample"]
